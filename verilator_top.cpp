@@ -2,8 +2,8 @@
 #include <iostream>             // Need std::cout
 #include "Vtop.h"               // From Verilating "top.v"
 #include "Vtop_top.h"
-#include "Vtop_clean_core.h"
-#include "Vtop_riscv_multicycle.h"
+// #include "Vtop_clean_core.h"
+// #include "Vtop_riscv_multicycle.h"
 Vtop *top;                      // Instantiation of module
 
 vluint64_t main_time = 0;       // Current simulation time
@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
         main_time++;            // Time passes...
     }
 
-    printf("Instructions completed (approximately): %d\n",
-        top->top->core->core->instruction_count);
+    // printf("Instructions completed (approximately): %d\n",
+    //     top->top->core->core->instruction_count);
     top->final();               // Done simulating
     //    // (Though this example doesn't get here)
     delete top;

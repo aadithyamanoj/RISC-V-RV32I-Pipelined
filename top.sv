@@ -52,7 +52,6 @@ core the_core(
     ,.rsp(data_mem_rsp)
     );
 
-data_mem.
 
 
 always @(posedge clk) begin
