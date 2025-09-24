@@ -1,0 +1,59 @@
+
+test:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00010000 <_start>:
+   10000:	00030137          	lui	sp,0x30
+   10004:	ff010113          	addi	sp,sp,-16 # 2fff0 <dummy_string+0xfff0>
+   10008:	018000ef          	jal	10020 <main>
+   1000c:	000300b7          	lui	ra,0x30
+   10010:	ffd08093          	addi	ra,ra,-3 # 2fffd <dummy_string+0xfffd>
+   10014:	0000c137          	lui	sp,0xc
+   10018:	0de10113          	addi	sp,sp,222 # c0de <_start-0x3f22>
+   1001c:	0020a023          	sw	sp,0(ra)
+
+00010020 <main>:
+   10020:	ff010113          	addi	sp,sp,-16
+   10024:	00112623          	sw	ra,12(sp)
+   10028:	00812423          	sw	s0,8(sp)
+   1002c:	01010413          	addi	s0,sp,16
+   10030:	04100513          	li	a0,65
+   10034:	024000ef          	jal	10058 <putc>
+   10038:	04200513          	li	a0,66
+   1003c:	01c000ef          	jal	10058 <putc>
+   10040:	00a00793          	li	a5,10
+   10044:	00078513          	mv	a0,a5
+   10048:	00c12083          	lw	ra,12(sp)
+   1004c:	00812403          	lw	s0,8(sp)
+   10050:	01010113          	addi	sp,sp,16
+   10054:	00008067          	ret
+
+00010058 <putc>:
+   10058:	ff010113          	addi	sp,sp,-16
+   1005c:	00112623          	sw	ra,12(sp)
+   10060:	00050593          	mv	a1,a0
+   10064:	00030537          	lui	a0,0x30
+   10068:	ff850513          	addi	a0,a0,-8 # 2fff8 <dummy_string+0xfff8>
+   1006c:	01c000ef          	jal	10088 <mmio_write32>
+   10070:	00000513          	li	a0,0
+   10074:	00c12083          	lw	ra,12(sp)
+   10078:	01010113          	addi	sp,sp,16
+   1007c:	00008067          	ret
+
+00010080 <mmio_read32>:
+   10080:	00052503          	lw	a0,0(a0)
+   10084:	00008067          	ret
+
+00010088 <mmio_write32>:
+   10088:	00b52023          	sw	a1,0(a0)
+   1008c:	00008067          	ret
+
+00010090 <mmio_read8>:
+   10090:	00050503          	lb	a0,0(a0)
+   10094:	00008067          	ret
+
+00010098 <mmio_write8>:
+   10098:	00b50023          	sb	a1,0(a0)
+   1009c:	00008067          	ret
