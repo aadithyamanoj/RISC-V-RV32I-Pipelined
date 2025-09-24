@@ -101,8 +101,8 @@ module regFile(
         ,.r1_data_o(rd2_reg)
     );
 
-    assign rd1 = /*(rs1 == 5'd0) ? '0 :*/ rd1_reg;
-    assign rd2 = /*(rs2 == 5'd0) ? '0 :*/ rd2_reg;
+    assign rd1 = rd1_reg;
+    assign rd2 = rd2_reg;
 
 
 
