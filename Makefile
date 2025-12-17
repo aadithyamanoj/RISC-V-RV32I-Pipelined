@@ -35,7 +35,9 @@ test: $(TEST_S:.s=.o) $(TEST_C:.c=.o) $(LIBS) $(TOOLS)
 
 result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv test
 	 @unset LDFLAGS; \
-	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND --top-module top RTL/top.sv Sim/verilator_top.cpp --exe
+	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND --top-module top RTL/top.sv Sim/verilator_top.cpp --exe \
+	 -CFLAGS "-std=c++17" \
+   -LDFLAGS "-std=c++17"
 	 cp obj_dir/Vtop ./result-verilator
 	 rm -rf obj_dir
 	 ./result-verilator

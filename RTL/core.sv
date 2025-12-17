@@ -6,44 +6,7 @@
 `include "RTL/memory.sv"
 `include "RTL/reg_file.sv"
 `include "RTL/printDebug.sv"
-//-------------------------------------------------------------------------
-// Pipeline register definitions
-//-------------------------------------------------------------------------
-// IF/ID register: latch fetched instruction and PC
-typedef struct packed{
-    word    pc;
-    logic [31:0] inst;
-} IF_ID_t;
-// ID/EX register: latch decoded fields and register file outputs
-typedef struct packed{
-    word                  inst;
-    word                   pc;
-    instruction_decode_t   decoded;
-    logic                  reg_write_enable;
-} ID_EX_t;
-// EX/MEM register: latch ALU result and branch outcome (plus data for stores)
-typedef struct packed{
-    word inst;
-    word                   pc;
-    instruction_decode_t   decoded;
-    word                   ALU_Result;
-    word                   next_pc;
-    logic                  jump;
-    word                   Read_Data1;
-    word                   Read_Data2; // For store instructions
-    logic                  reg_write_enable;
-} EX_MEM_t;
-// MEM/WB register: latch write-back data
-typedef struct packed{
-    word inst;
-    word                   pc;
-    instruction_decode_t   decoded;
-    logic                  reg_write_enable;
-    logic                  mem_complete;
-    word                   ALU_Result;
-    word                   Read_Data2;
-} MEM_WB_t;
-//-------------------------------------------------------------------------
+
 module core(
     input logic       clk
     ,input logic      reset
@@ -52,7 +15,7 @@ module core(
     ,input  memory_io_rsp   inst_mem_rsp
     ,output memory_io_req   data_mem_req
     ,input  memory_io_rsp   data_mem_rsp
-    );
+);
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +91,6 @@ always_comb begin
     else    
         next_pc = pc+4;
 end
-//request read from memory before pc is registered
 always_comb begin
     inst_mem_req.addr = pc;
     inst_mem_req.valid = (init_pc) ? 0 : (STALL_PC) ? 0 : 1;
@@ -193,10 +155,7 @@ always_comb begin
         FLUSH_ID_EX = true; //flush the id/ex pipeline register
         FLUSH_IF_ID = true; //stall the if/id pipeline register
         FLUSH_EX_MEM = true;
-        STALL_PC = true; //stall the pc to not fetch the next instruction
     end
-
-
 end
 
 
@@ -318,9 +277,6 @@ always_comb begin
     end
 end
 
-
-
-//latching the values
 always_ff @( posedge clk ) begin 
     if(~STALL_EX_MEM) begin
         EX_MEM_r <= EX_MEM_n;
@@ -331,8 +287,7 @@ end
 //memory stage 
 //////////////////////////////////////////////////////////////////////////////////////
 
-//Since Mem is sync read and write, do the request right after ALU, while the EX/MEM is being written to. 
-//note the use of EX_MEM_n to get the values at the same time as the pipeline register 
+// Issue requests in Mem stage and wait for the response in the WB stage.
 
 logic[1:0] store_offset;
 logic [31:0] store_data;
@@ -391,14 +346,8 @@ always_comb begin
     end
 end
 
-
-
-
 word LOAD_RESULT;
-
-
 wire [`word_size-1:0] MEM_RSP = data_mem_rsp.data;
-
 //extracing data from memory response
 logic [1:0] byte_offset;
 logic [7:0] data_byte;
@@ -483,9 +432,7 @@ always_comb begin
     if (MEM_WB_r.reg_write_enable) begin
         wv = true;
     end
-end
 
-always_comb begin
     Write_Addr = MEM_WB_r.decoded.rd;
     if ((MEM_WB_r.decoded.opcode == OPCODE_I_LOAD)) begin
         Write_Data = LOAD_RESULT;
@@ -496,154 +443,6 @@ always_comb begin
     else 
         Write_Data = MEM_WB_r.ALU_Result;
 end
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////
-//debugging
-//////////////////////////////////////////////////////////////////////////////////////
-
-//show me the state of the pipeline at each cc
-always_ff @( posedge clk ) begin
-//      $display("RS2: %h", Read_Addr2);
-//      $display("RS1: %h", Read_Addr1);
-//      if ((EX_MEM_r.reg_write_enable) && (EX_MEM_r.decoded.rd != 0) &&
-//          (EX_MEM_r.decoded.rd == ID_EX_r.decoded.rs1)) begin
-//          $display("Execute stage: Forwarding active: EX/MEM ALU_Result 0x%h forwarded from rd %0d to RS1 (rs1 value: %0d)",
-//                   EX_MEM_r.ALU_Result, EX_MEM_r.decoded.rd, ID_EX_r.decoded.rs1);
-//      end else if ((MEM_WB_r.reg_write_enable) && (MEM_WB_r.decoded.rd != 0) &&
-//                   (MEM_WB_r.decoded.rd == ID_EX_r.decoded.rs1)) begin
-//          $display("Execute stage: Forwarding active: MEM/WB Write_Data 0x%h forwarded from rd %0d to RS1 (rs1 value: %0d)",
-//                   Write_Data, MEM_WB_r.decoded.rd, ID_EX_r.decoded.rs1);
-//      end
-
-//     if ((EX_MEM_r.reg_write_enable) && (EX_MEM_r.decoded.rd != 0) &&
-//          (EX_MEM_r.decoded.rd == ID_EX_r.decoded.rs2)) begin
-//          $display("Execute stage: Forwarding active: EX/MEM ALU_Result 0x%h forwarded from rd %0d to RS2 (rs2 value: %0d)",
-//                   EX_MEM_r.ALU_Result, EX_MEM_r.decoded.rd, ID_EX_r.decoded.rs2);
-//      end else if ((MEM_WB_r.reg_write_enable) && (MEM_WB_r.decoded.rd != 0) &&
-//                   (MEM_WB_r.decoded.rd == ID_EX_r.decoded.rs2)) begin
-//          $display("Execute stage: Forwarding active: MEM/WB Write_Data 0x%h forwarded from rd %0d to RS2 (rs2 value: %0d)",
-//                   Write_Data, MEM_WB_r.decoded.rd, ID_EX_r.decoded.rs2);
-//      end
-//      $display("ALU Result: %h", EX_MEM_r.ALU_Result);
-//    //  $display("stall: %h", stall);
-
-//     //check store req
-//     if (EX_MEM_r.decoded.opcode == OPCODE_S) begin
-//     $display("STORE: addr=%h, data=%h", data_mem_req.addr, data_mem_req.data);
-//     end
-
-//     if(EX_MEM_r.decoded.opcode == OPCODE_I_LOAD) begin
-//         $display("LOAD: addr=%h", data_mem_req.addr);
-//     end
-
-//     //check load response 
-//     if (MEM_WB_r.decoded.opcode == OPCODE_I_LOAD && data_mem_rsp.valid) begin
-//         $display("LOAD: addr=%h, mem_data=%h, load_result=%h", data_mem_rsp.addr, data_mem_rsp.data, LOAD_RESULT);
-//     end
-    //print_debug();
-    //print_instruction(IF_ID_r.pc, IF_ID_r.inst);
-    //print_instruction(ID_EX_r.pc, ID_EX_r.inst);
-    //print_instruction(EX_MEM_r.pc, EX_MEM_r.inst);
-    //print_instruction(MEM_WB_r.pc, MEM_WB_r.inst);
-
-end
-
-// // Add this debug block around line 275, before the forwarding logic
-// always_ff @(posedge clk) begin
-//     if (EX_MEM_n.decoded.opcode == OPCODE_S) begin
-//         $display("STORE DEBUG:");
-//         $display("  Current store rs2=%d, Read_Data2=0x%x", EX_MEM_n.decoded.rs2, Read_Data2);
-//         $display("  EX_MEM_r: opcode=0x%x, rd=%d, reg_write_enable=%b, ALU_Result=0x%x", 
-//                  EX_MEM_r.decoded.opcode, EX_MEM_r.decoded.rd, EX_MEM_r.reg_write_enable, EX_MEM_r.ALU_Result);
-//         $display("  MEM_WB_r: opcode=0x%x, rd=%d, reg_write_enable=%b, Write_Data=0x%x", 
-//                  MEM_WB_r.decoded.opcode, MEM_WB_r.decoded.rd, MEM_WB_r.reg_write_enable, Write_Data);
-        
-//         // Check forwarding conditions
-//         if ((EX_MEM_r.reg_write_enable) && (EX_MEM_r.decoded.rd != 0) && 
-//             (EX_MEM_r.decoded.rd == EX_MEM_n.decoded.rs2)) begin
-//             $display("  FORWARDING EX/MEM->RS2!");
-//         end
-//         if ((MEM_WB_r.reg_write_enable) && (MEM_WB_r.decoded.rd != 0) && 
-//             (MEM_WB_r.decoded.rd == EX_MEM_n.decoded.rs2)) begin
-//             $display("  FORWARDING MEM/WB->RS2!");
-//         end
-//     end
-// end
-
-// // Add this in the WB stage where registers are written
-// always_ff @(posedge clk) begin
-//     if (wv && (Write_Addr == 11)) begin
-//         $display("WRITING TO x11: addr=%d, data=0x%x", Write_Addr, Write_Data);
-//     end
-// end
-
-// always_ff @(posedge clk) begin
-//     if (wv && (Write_Addr == 10)) begin
-//         $display("READING FROM x10: addr=%d, data=0x%x", Write_Addr, Write_Data);
-//     end
-// end
-
-// always_ff @(posedge clk) begin
-//     if (MEM_WB_r.reg_write_enable && (Write_Addr == 10) && (MEM_WB_r.decoded.opcode == OPCODE_I_IMM)) begin
-//         $display("ADDI TO x10: imm=0x%x, rs1=%d, rs1_data=0x%x, result=0x%x", 
-//                  MEM_WB_r.decoded.imm, MEM_WB_r.decoded.rs1, 
-//                  Read_Data1, Write_Data);
-//     end
-// end
-
-//FUNCTIONS FOR DEBUG ONLY------------------------------------------------------------------------------------------------------------------
-function automatic void print_debug();
-    // Print values at each pipeline register
-    $display("-------------------------------------------------------------------------------------------");
-    $display("IF/ID: PC: %h | INST: %h", IF_ID_r.pc, IF_ID_r.inst);
-    $display();
-    $display("ID/EX: PC: %h | INSTRUCTION: %s | reg_write_enable: %b",
-             ID_EX_r.pc, instruction_to_string(ID_EX_r.decoded), ID_EX_r.reg_write_enable);
-    $display();
-    $display("EX/MEM: PC: %h | INSTRUCTION: %s | ALU_Result: %h | next_pc: %h | jump: %b | Read_Data1: %h | Read_Data2: %h | reg_write_enable: %b",
-             EX_MEM_r.pc, instruction_to_string(EX_MEM_r.decoded), EX_MEM_r.ALU_Result, EX_MEM_r.next_pc, EX_MEM_r.jump, EX_MEM_r.Read_Data1, EX_MEM_r.Read_Data2, EX_MEM_r.reg_write_enable);
-    $display();
-    $display("MEM/WB: PC: %h | INSTRUCTION: %s | Write_Data: %h | reg_write_enable: %b | mem_complete: %b | ALU_Result: %h | Read_Data2: %h",
-             MEM_WB_r.pc, instruction_to_string(MEM_WB_r.decoded), Write_Data, MEM_WB_r.reg_write_enable, MEM_WB_r.mem_complete, MEM_WB_r.ALU_Result, MEM_WB_r.Read_Data2);
-    $display("-------------------------------------------------------------------------------------------");
-endfunction
-
-function automatic string instruction_to_string(instruction_decode_t decoded);
-    case (decoded.opcode)
-        OPCODE_R: return $sformatf("R-type: funct3=%h, funct7=%h, rs1=%h, rs2=%h, rd=%h", decoded.funct3, decoded.funct7, decoded.rs1, decoded.rs2, decoded.rd);
-        OPCODE_I_IMM: return $sformatf("I-type: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
-        OPCODE_I_LOAD: return $sformatf("Load: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
-        OPCODE_S: return $sformatf("Store: funct3=%h, rs1=%h, rs2=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rs2, decoded.imm);
-        OPCODE_SB: return $sformatf("Branch: funct3=%h, rs1=%h, rs2=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rs2, decoded.imm);
-        OPCODE_U_LUI: return $sformatf("LUI: rd=%h, imm=%h", decoded.rd, decoded.imm);
-        OPCODE_U_AUIPC: return $sformatf("AUIPC: rd=%h, imm=%h", decoded.rd, decoded.imm);
-        OPCODE_UJ_JAL: return $sformatf("JAL: rd=%h, imm=%h", decoded.rd, decoded.imm);
-        OPCODE_I_JALR: return $sformatf("JALR: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
-        default: return "Unknown instruction";
-    endcase
-endfunction
-
-
-
-// //using for debugging
-// function automatic string stage_to_string(stage s);
-//     case (s)
-//         stage_fetch:      return "FETCH";
-//         stage_decode:     return "DECODE";
-//         stage_execute:    return "EXECUTE";
-//         stage_mem:        return "MEMORY";
-//         stage_writeback:  return "WRITEBACK";
-//         default:           return "UNKNOWN";
-//     endcase
-// endfunction
-
-
 endmodule
-
-
-
-
 `endif
 

@@ -10,6 +10,8 @@
 `define user_tag_size 16
 
 
+typedef logic[`word_size - 1:0] word;
+
 //------------------------------------------------------------------------------
 // Opcode Localparams
 //------------------------------------------------------------------------------
@@ -75,7 +77,6 @@ localparam logic [6:0] FUNCT7_AND  = 7'b0000000; // AND operation (funct3 111)
 
 
 
-typedef logic[`word_size - 1:0] word;
 
 
 typedef enum logic [4:0] {
@@ -349,6 +350,79 @@ function automatic logic[3:0] write_mask(logic[2:0] f3, word addr); begin
         default: return 4'b1111;
     endcase
 end
+endfunction
+
+
+//-------------------------------------------------------------------------
+// Pipeline register definitions
+//-------------------------------------------------------------------------
+// IF/ID register:  fetched instruction and PC
+typedef struct packed{
+    word    pc;
+    logic [31:0] inst;
+} IF_ID_t;
+// ID/EX register: decoded fields and register file outputs
+typedef struct packed{
+    word                  inst;
+    word                   pc;
+    instruction_decode_t   decoded;
+    logic                  reg_write_enable;
+} ID_EX_t;
+// EX/MEM register:  ALU result and branch outcome (plus data for stores)
+typedef struct packed{
+    word inst;
+    word                   pc;
+    instruction_decode_t   decoded;
+    word                   ALU_Result;
+    word                   next_pc;
+    logic                  jump;
+    word                   Read_Data1;
+    word                   Read_Data2; // For store instructions
+    logic                  reg_write_enable;
+} EX_MEM_t;
+// MEM/WB register:  write-back data
+typedef struct packed{
+    word inst;
+    word                   pc;
+    instruction_decode_t   decoded;
+    logic                  reg_write_enable;
+    logic                  mem_complete;
+    word                   ALU_Result;
+    word                   Read_Data2;
+} MEM_WB_t;
+//-------------------------------------------------------------------------
+
+
+//FUNCTIONS FOR DEBUG ONLY------------------------------------------------------------------------------------------------------------------
+function automatic void print_debug(IF_ID_t IF_ID_r, ID_EX_t ID_EX_r, EX_MEM_t EX_MEM_r, MEM_WB_t MEM_WB_r, word Write_Data);
+    // Print values at each pipeline register
+    $display("-------------------------------------------------------------------------------------------");
+    $display("IF/ID: PC: %h | INST: %h", IF_ID_r.pc, IF_ID_r.inst);
+    $display();
+    $display("ID/EX: PC: %h | INSTRUCTION: %s | reg_write_enable: %b",
+             ID_EX_r.pc, instruction_to_string(ID_EX_r.decoded), ID_EX_r.reg_write_enable);
+    $display();
+    $display("EX/MEM: PC: %h | INSTRUCTION: %s | ALU_Result: %h | next_pc: %h | jump: %b | Read_Data1: %h | Read_Data2: %h | reg_write_enable: %b",
+             EX_MEM_r.pc, instruction_to_string(EX_MEM_r.decoded), EX_MEM_r.ALU_Result, EX_MEM_r.next_pc, EX_MEM_r.jump, EX_MEM_r.Read_Data1, EX_MEM_r.Read_Data2, EX_MEM_r.reg_write_enable);
+    $display();
+    $display("MEM/WB: PC: %h | INSTRUCTION: %s | Write_Data: %h | reg_write_enable: %b | mem_complete: %b | ALU_Result: %h | Read_Data2: %h",
+             MEM_WB_r.pc, instruction_to_string(MEM_WB_r.decoded), Write_Data, MEM_WB_r.reg_write_enable, MEM_WB_r.mem_complete, MEM_WB_r.ALU_Result, MEM_WB_r.Read_Data2);
+    $display("-------------------------------------------------------------------------------------------");
+endfunction
+
+function automatic string instruction_to_string(instruction_decode_t decoded);
+    case (decoded.opcode)
+        OPCODE_R: return $sformatf("R-type: funct3=%h, funct7=%h, rs1=%h, rs2=%h, rd=%h", decoded.funct3, decoded.funct7, decoded.rs1, decoded.rs2, decoded.rd);
+        OPCODE_I_IMM: return $sformatf("I-type: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
+        OPCODE_I_LOAD: return $sformatf("Load: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
+        OPCODE_S: return $sformatf("Store: funct3=%h, rs1=%h, rs2=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rs2, decoded.imm);
+        OPCODE_SB: return $sformatf("Branch: funct3=%h, rs1=%h, rs2=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rs2, decoded.imm);
+        OPCODE_U_LUI: return $sformatf("LUI: rd=%h, imm=%h", decoded.rd, decoded.imm);
+        OPCODE_U_AUIPC: return $sformatf("AUIPC: rd=%h, imm=%h", decoded.rd, decoded.imm);
+        OPCODE_UJ_JAL: return $sformatf("JAL: rd=%h, imm=%h", decoded.rd, decoded.imm);
+        OPCODE_I_JALR: return $sformatf("JALR: funct3=%h, rs1=%h, rd=%h, imm=%h", decoded.funct3, decoded.rs1, decoded.rd, decoded.imm);
+        default: return "Unknown instruction";
+    endcase
 endfunction
 
 

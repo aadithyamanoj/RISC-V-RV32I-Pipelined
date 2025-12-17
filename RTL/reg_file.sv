@@ -20,6 +20,7 @@ module regFile(
     #(
         .width_p(32)
         ,.els_p(32)
+        ,.read_write_same_addr_p(1)
     )
     registers
     (
