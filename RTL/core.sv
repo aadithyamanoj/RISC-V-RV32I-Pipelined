@@ -429,7 +429,7 @@ end
 always_comb begin
     rv = true;
     wv = false;
-    if (MEM_WB_r.reg_write_enable) begin
+    if (MEM_WB_r.reg_write_enable && MEM_WB_r.decoded.rd != '0) begin
         wv = true;
     end
 
