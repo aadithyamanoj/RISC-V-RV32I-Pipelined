@@ -6,8 +6,8 @@ CC=$(RISCV_PREFIX)-gcc
 AS=$(RISCV_PREFIX)-as
 LD=$(RISCV_PREFIX)-ld
 
-SSFLAGS=-march=rv32i
-CCFLAGS=-march=rv32i -Wno-builtin-declaration-mismatch -Ilibmc
+SSFLAGS=-march=rv32i_zmmul -mabi=ilp32
+CCFLAGS=-march=rv32i_zmmul -mabi=ilp32 -O2 -Wno-builtin-declaration-mismatch -Ilibmc
 LDFLAGS=--script ld.script
 LDPOSTFLAGS= -Llibmc -lmc  -Llibmc -lmc -L$(RISCV_LIB) -lgcc
 TOOLS=dumphex
@@ -15,9 +15,55 @@ LIBS=libmc/libmc.a
 
 TEST_S=tests/start.s
 TEST_C=tests/test.c
+PREDICT?=1
+
+BASEJUMP_STL_DIR=third_party/basejump_stl
+BASEJUMP_CACHE_SRCS= \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_defines.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux_segmented.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_circular_ptr.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_clkgate_optional.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_dff.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_dff_en.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_dff_en_bypass.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_counter_clear_up.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_decode.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_priority_encode.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_lru_pseudo_tree_encode.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_lru_pseudo_tree_decode.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_lru_pseudo_tree_backup.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux_bitwise.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_priority_encode_one_hot_out.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_encode_one_hot.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_scan.sv \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_expand_bitmask.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1r1w_synth.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1r1w.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_synth.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_mask_write_bit_synth.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_mask_write_byte_synth.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_mask_write_bit.sv \
+	$(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_mask_write_byte.sv \
+	$(BASEJUMP_STL_DIR)/bsg_dataflow/bsg_two_fifo.sv \
+	$(BASEJUMP_STL_DIR)/bsg_dataflow/bsg_fifo_1r1w_small.sv \
+	$(BASEJUMP_STL_DIR)/bsg_dataflow/bsg_fifo_1r1w_small_unhardened.sv \
+	$(BASEJUMP_STL_DIR)/bsg_dataflow/bsg_fifo_tracker.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_pkg.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_decode.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_dma.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_miss.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_tbuf.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_sbuf.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache_buffer_queue.sv \
+	$(BASEJUMP_STL_DIR)/bsg_cache/bsg_cache.sv
 
 # Updated rules for files in subdirectories
 tests/%.o: tests/%.c
+	$(CC) $(CCFLAGS) -c $< -o $@
+
+benchmarks/%.o: benchmarks/%.c
 	$(CC) $(CCFLAGS) -c $< -o $@
 
 tests/%.o: tests/%.s  
@@ -33,9 +79,35 @@ test: $(TEST_S:.s=.o) $(TEST_C:.c=.o) $(LIBS) $(TOOLS)
 	$(LD) $(LDFLAGS) -o test $(TEST_S:.s=.o) $(TEST_C:.c=.o) $(LDPOSTFLAGS)
 	/bin/bash ./Sim/elftohex.sh test .
 
-result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv test
+.PHONY: attention cache-test predictor-test ppa ppa-synth ppa-sta
+
+attention:
+	@$(MAKE) clean
+	@$(MAKE) result-verilator TEST_C=benchmarks/attention.c
+
+predictor-test:
+	@$(MAKE) clean
+	@$(MAKE) result-verilator TEST_C=tests/predictor_mul.c
+
+cache-test:
+	@$(MAKE) clean
+	@$(MAKE) result-verilator TEST_C=tests/cache_stress.c
+
+ppa:
+	@$(MAKE) -C asic ppa
+
+ppa-synth:
+	@$(MAKE) -C asic ppa-synth
+
+ppa-sta:
+	@$(MAKE) -C asic ppa-sta
+
+result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv $(BASEJUMP_CACHE_SRCS) test
 	 @unset LDFLAGS; \
-	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND --top-module top RTL/top.sv Sim/verilator_top.cpp --exe \
+	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND \
+	 -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache \
+	 -GENABLE_BRANCH_PREDICTION=$(PREDICT) --top-module top \
+	 $(BASEJUMP_CACHE_SRCS) RTL/top.sv Sim/verilator_top.cpp --exe \
 	 -CFLAGS "-std=c++17" \
    -LDFLAGS "-std=c++17"
 	 cp obj_dir/Vtop ./result-verilator
@@ -48,5 +120,4 @@ result-iverilog: RTL/itop.sv RTL/top.sv RTL/core.sv test
 	 rm result-iverilog
 
 clean:
-	rm -rf dumphex test.vcd obj_dir/ *.o tests/*.o result-verilator result-iverilog *.hex test.bin test
-
+	rm -rf dumphex test.vcd obj_dir/ *.o tests/*.o benchmarks/*.o result-verilator result-iverilog *.hex test.bin test

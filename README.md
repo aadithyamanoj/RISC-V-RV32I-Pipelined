@@ -1,29 +1,73 @@
 # Pipelined RV32I RISC-V CPU
 
-## 1. Project Overview
-This project implements a five-stage pipelined RV32I RISC-V CPU with full data-hazard bypassing, designed from the ground up to demystify how instructions flow through a modern processor pipeline. Driven by a desire to understand the low level mechanics of program execution (fetch, decode, execute, memory access, and write-back stages interact, and how hazards are detected and resolved), I built each pipeline stage in SystemVerilog, added forwarding paths to eliminate stalls, and verified correctness by writing RV32I Assembly. The result is a hands-on, fully functional RV32I core that illustrates the fundamental principles behind high-performance CPU design.
+This repository contains a five-stage RV32I CPU with synchronous instruction,
+data, and register-file interfaces. It supports the Zmmul subset, data-hazard
+bypassing, load-use stalls, control-flow prediction, and Verilator execution of
+linked C programs.
 
-## 2. Features
-- Full RV32I instruction support
-- Five pipeline stages
-- Data-hazard detection and bypassing 
-- Control-hazard handling
+## Predictor timing
 
-## 3. Architecture  
-Inspired by the processor that is described in the Hennesy and Patterson textbook, I designed my core with 5 pipeline stages. Unlike the text, however, I opted to use synchronous memories as they represented a more realistic view on memory latency. As a result of this there are a few key differences in the timing of the memory and register file reads in order to read data in time for execution. Additionally I opted to only implement basic arithmetic in the execute stage, removing the need for stalls due to multy-cycle execution(multiply, divide, etc.).
-### 3.1. Pipeline Stages  
-- **IF (Instruction Fetch)**  
-- **ID (Instruction Decode)**  
-- **EX (Execute / ALU)**  
-- **MEM (Data Memory Access)**  
-- **WB (Write-Back to Register File)**  
+The target and direction predictors are deliberately separate:
 
-### 3.4. Hazard Handling  
-- **Data hazards**: Hazard detection logic and control signals 
-- **Control hazards**: branch resolution in EX and pipeline flush  
+- A 32-entry direct-mapped BTB is indexed by the fetch PC. Every hit predicts a
+  transfer to its cached target during fetch.
+- A 64-entry gshare table with six history bits is indexed in decode. For a
+  conditional branch, it either confirms the BTB-taken path or redirects to the
+  fall-through path.
+- Execute resolves the branch, updates the BTB and the saved gshare counter
+  index, and performs authoritative recovery on a mismatch.
 
-## 4. Implementation Details  
-In order to simulate this design, I used Verilator for its quick compile and execution time. In order to accurately test full ISA compliance, I compiled Assembly and simple C programs (start.s and test.c respectively) and turned the linked .elf file into hex files which could be read into the memory from the verilog. 
+## Decoupled cache issue
 
-## 5. Learnings and Future opportunites
-I came into this project with the idea that the execution would be at the core of what makes it complex. In reality, I have learned that data dependencies and data movoement were one of the biggest bottlenecks in my design. Out of every part, debugging the bypassing took the longest time. Additionally, its clear how moving data to and from memory may have been simple in the project, but adding larger memories with larger latencies or multilevel caches would significantly increase complexity. Finally, there is plenty of opportunity to expore futher perofmance advancements for my design, the first of which is a BTB. A BTB is a minimal solution to branch misprediction that would serve to dramatically improve my misprediction rate (which is 100% right now :( ). I also now have a strong foundation upon which I plan on exploring the mechanics of Out of Order execution in a similar simulated fasion. 
+The frontend has a four-entry ordered fetch window. It submits a new request on
+every cycle that `bsg_cache` accepts one, saves the PC and BTB prediction with
+that request, and fills the corresponding entry when the ordered response
+returns. Decode consumes completed entries independently. Branch recovery bumps
+an epoch and discards stale responses without draining the cache pipeline first.
+
+The data side has a four-entry ordered store queue. A store retires after its
+address, data, and byte mask enter the queue; queued stores can then issue to the
+BSG D-cache on consecutive cycles. Loads conservatively wait for all older
+stores to receive cache responses, preserving program order without requiring
+store-to-load forwarding.
+
+## Multiply
+
+`MUL`, `MULH`, `MULHSU`, and `MULHU` share one signedness-controlled 33x33
+combinational product datapath. The current pre-layout timing result identifies
+this as the next microarchitectural target: it should become multi-cycle or
+pipelined before attempting a timing-clean physical design.
+
+## Simulation and benchmarks
+
+The default simulation environment uses Verilator and the RV32 Zmmul GNU
+toolchain configured in `Sim/site-config.sh`.
+
+```sh
+make predictor-test
+make cache-test
+make attention
+```
+
+The directed regressions cover all four multiply results, predictable branch
+traffic, and dirty evictions from a working set twice the D-cache capacity. The
+deterministic 16x16 integer attention benchmark checks its input,
+projection, Q/K/V, score, probability, and output tensor hashes against the
+accelerator reference. MMIO markers delimit kernel-only cycle, retired
+instruction, branch, and misprediction counters.
+
+Both L1s are 8 KiB, two-way, write-back BaseJump STL `bsg_cache` instances with
+32-byte lines. A four-entry metadata adapter preserves ordered CPU responses,
+while a blocking line-DMA bridge converts refills and evictions to the
+simulation memory's 32-bit transactions. The MMIO window at `0x0002fff0` is
+uncached.
+
+## Sky130 PPA
+
+```sh
+make ppa
+```
+
+This uses the OSS CAD Suite for synthesis and the OpenLane2 Nix environment for
+OpenROAD timing and vectorless power. See `asic/README.md` for the synthesis
+boundary and assumptions.

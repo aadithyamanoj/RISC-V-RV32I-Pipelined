@@ -1,0 +1,9 @@
+*.hex
+/dumphex
+/result-verilator
+/test
+/test.bin
+/test.vcd
+/obj_dir/
+/**/*.o
+/asic/runs/

@@ -81,6 +81,29 @@ static void test_sprintf(void) {
     expect_str("sprintf text", buf, "val=42 hex=2a");
 }
 
+static void test_multiply(void) {
+    volatile int lhs = -12345;
+    volatile int rhs = 6789;
+    volatile unsigned ulhs = 0xfedcba98u;
+    volatile unsigned urhs = 17u;
+
+    expect_int("mul signed", lhs * rhs, -83810205);
+    expect_int("mul unsigned low", (int)(ulhs * urhs), (int)0xeca86418u);
+}
+
+static void test_predictable_branches(void) {
+    volatile int sum = 0;
+    int i;
+
+    for (i = 0; i < 200; i++) {
+        if ((i & 7) != 0)
+            sum += i;
+        else
+            sum -= i;
+    }
+    expect_int("gshare loop", sum, 15100);
+}
+
 int main(void) {
     printf("Running libmc smoke tests\n");
     test_strlen();
@@ -89,6 +112,8 @@ int main(void) {
     test_strchr();
     test_strtok();
     test_sprintf();
+    test_multiply();
+    test_predictable_branches();
     if (failures == 0) {
         printf("All libmc smoke tests passed\n");
     } else {

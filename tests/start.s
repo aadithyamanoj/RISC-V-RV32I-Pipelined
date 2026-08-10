@@ -8,8 +8,14 @@ _start:
 
      li sp, (0x00030000 - 16)
      call    main
+    bnez a0, program_failed
     li   x1, 0x2FFFD       # Halt address for success
     li   x2, 0xC0DE        # Success code
+    sw   x2, 0(x1)
+
+program_failed:
+    li   x1, 0x2FFFD
+    li   x2, 0xDEAD
     sw   x2, 0(x1)
 
      # # Initialize base registers
@@ -134,4 +140,3 @@ _start:
 
 # end_program:
     # j    end_program       # Infinite loop
-

@@ -73,6 +73,7 @@ localparam logic [6:0] FUNCT7_SRL  = 7'b0000000; // SRL operation (funct3 101)
 localparam logic [6:0] FUNCT7_SRA  = 7'b0100000; // SRA operation (funct3 101)
 localparam logic [6:0] FUNCT7_OR   = 7'b0000000; // OR operation (funct3 110)
 localparam logic [6:0] FUNCT7_AND  = 7'b0000000; // AND operation (funct3 111)
+localparam logic [6:0] FUNCT7_MULDIV = 7'b0000001;
 
 
 
@@ -90,7 +91,11 @@ typedef enum logic [4:0] {
     ALU_SRA  = 5'd7,  // Shift Right Arithmetic
     ALU_OR   = 5'd8,  // Bitwise OR
     ALU_AND  = 5'd9,  // Bitwise AND
-    ALU_NOP  = 5'd10 // No Operation (Default/Unused)
+    ALU_NOP  = 5'd10, // No Operation (Default/Unused)
+    ALU_MUL  = 5'd11,
+    ALU_MULH = 5'd12,
+    ALU_MULHSU = 5'd13,
+    ALU_MULHU = 5'd14
 } alu_op_t;
 
 typedef struct packed {
@@ -108,6 +113,15 @@ typedef struct packed {
 
 function automatic logic[31:0] ALU_EXEC(instruction_decode_t decoded_params, logic[31:0] Read_Data1, logic[31:0] Read_Data2, pc);
     logic [4:0] shamt;
+    logic signed [32:0] multiply_lhs;
+    logic signed [32:0] multiply_rhs;
+    logic signed [65:0] multiply_product;
+    multiply_lhs = $signed({((decoded_params.alu_op == ALU_MULH)
+        || (decoded_params.alu_op == ALU_MULHSU))
+        ? Read_Data1[31] : 1'b0, Read_Data1});
+    multiply_rhs = $signed({(decoded_params.alu_op == ALU_MULH)
+        ? Read_Data2[31] : 1'b0, Read_Data2});
+    multiply_product = multiply_lhs * multiply_rhs;
     if (decoded_params.opcode==OPCODE_U_LUI) begin
         return decoded_params.imm;
     end 
@@ -162,6 +176,12 @@ function automatic logic[31:0] ALU_EXEC(instruction_decode_t decoded_params, log
             // Bitwise AND
             return Read_Data1 & (decoded_params.opcode==OPCODE_R ? Read_Data2 : decoded_params.imm);
         end
+        ALU_MUL: begin
+            return multiply_product[31:0];
+        end
+        ALU_MULH, ALU_MULHSU, ALU_MULHU: begin
+            return multiply_product[63:32];
+        end
         ALU_NOP: begin
             // No Operation
             return 32'd0;
@@ -202,7 +222,15 @@ function automatic instruction_decode_t decode_instruction(word fetched_instruct
     // Decode  Instructions
     case(decoded_params.opcode)
         OPCODE_R: begin
-            case (decoded_params.funct3)
+            if (decoded_params.funct7 == FUNCT7_MULDIV) begin
+                case (decoded_params.funct3)
+                    3'b000: decoded_params.alu_op = ALU_MUL;
+                    3'b001: decoded_params.alu_op = ALU_MULH;
+                    3'b010: decoded_params.alu_op = ALU_MULHSU;
+                    3'b011: decoded_params.alu_op = ALU_MULHU;
+                    default: decoded_params.alu_op = ALU_NOP;
+                endcase
+            end else case (decoded_params.funct3)
                 FUNCT3_ADD_SUB: begin
                     if (decoded_params.funct7 == FUNCT7_ADD)
                         decoded_params.alu_op = ALU_ADD;
@@ -358,36 +386,50 @@ endfunction
 //-------------------------------------------------------------------------
 // IF/ID register:  fetched instruction and PC
 typedef struct packed{
+    logic valid;
     word    pc;
     logic [31:0] inst;
+    logic predicted_taken;
+    logic btb_hit;
+    word predicted_target;
+    logic [5:0] predictor_index;
 } IF_ID_t;
 // ID/EX register: decoded fields and register file outputs
 typedef struct packed{
+    logic                  valid;
     word                  inst;
     word                   pc;
     instruction_decode_t   decoded;
     logic                  reg_write_enable;
+    logic                  predicted_taken;
+    logic                  btb_hit;
+    word                   predicted_target;
+    logic [5:0]            predictor_index;
 } ID_EX_t;
 // EX/MEM register:  ALU result and branch outcome (plus data for stores)
 typedef struct packed{
+    logic                  valid;
     word inst;
     word                   pc;
     instruction_decode_t   decoded;
     word                   ALU_Result;
     word                   next_pc;
     logic                  jump;
+    logic                  mispredict;
     word                   Read_Data1;
     word                   Read_Data2; // For store instructions
     logic                  reg_write_enable;
 } EX_MEM_t;
 // MEM/WB register:  write-back data
 typedef struct packed{
+    logic                  valid;
     word inst;
     word                   pc;
     instruction_decode_t   decoded;
     logic                  reg_write_enable;
     logic                  mem_complete;
     word                   ALU_Result;
+    word                   Load_Result;
     word                   Read_Data2;
 } MEM_WB_t;
 //-------------------------------------------------------------------------
