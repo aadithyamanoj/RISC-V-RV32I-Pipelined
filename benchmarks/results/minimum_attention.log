@@ -1,0 +1,28 @@
+## work.bsg_mem_2r1w_sync: instantiating width_p=         32, els_p=         32, read_write_same_addr_p=          1, harden_p=          0 (TOP.top.the_core.cpu.reg_file.registers)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=        44, els_p=       128 (TOP.top.the_core.instruction_cache.cache.tag_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=        44, els_p=       128 (TOP.top.the_core.data_cache.cache.tag_mem)
+## work.bsg_mem_1rw_sync_mask_write_byte: instantiating data_width_p=        64, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem)
+## work.bsg_mem_1rw_sync_mask_write_byte: instantiating data_width_p=        64, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=         3, els_p=       128 (TOP.top.the_core.instruction_cache.cache.stat_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=         3, els_p=       128 (TOP.top.the_core.data_cache.cache.stat_mem)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[0].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[1].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[2].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[3].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[4].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[5].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[6].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[7].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[0].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[1].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[2].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[3].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[4].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[5].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[6].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[7].mem_1rw_sync)
+ATTENTION size=16 x=fd1a8e79 wq=582d93a1 wk=4117d083 wv=b7d710c7 q=c6e1e5f0 k=a1c4d0be v=921796b2 scores=a08df1e3 probabilities=c6986f8d output=e7b21362 status=PASS
+PROFILE cycles=1004601 retired=213633 branches=38998 mispredicts=32810 btb_hits=57106
+HALT code=0xc0de pc=0x1002c
+KERNEL_PROFILE cycles=812098 retired=173349 branches=30065 mispredicts=25154
+CACHE_PROFILE icache_hits=246323 icache_misses=121 dcache_hits=50562 dcache_misses=110 dcache_writebacks=0

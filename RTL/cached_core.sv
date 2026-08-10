@@ -8,7 +8,10 @@
 // The backing-memory word ports remain external so DRAM/interconnect behavior
 // can be modeled independently from the on-chip L1 SRAMs.
 module cached_core #(
-    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1
+    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1,
+    parameter int unsigned FETCH_DEPTH = 4,
+    parameter int unsigned STORE_DEPTH = 4,
+    parameter int unsigned CACHE_META_DEPTH = 4
 ) (
     input  logic clk,
     input  logic reset,
@@ -42,7 +45,9 @@ module cached_core #(
     logic [63:0] unused_icache_writebacks;
 
     core #(
-        .ENABLE_BRANCH_PREDICTION(ENABLE_BRANCH_PREDICTION)
+        .ENABLE_BRANCH_PREDICTION(ENABLE_BRANCH_PREDICTION),
+        .FETCH_DEPTH(FETCH_DEPTH),
+        .STORE_DEPTH(STORE_DEPTH)
     ) cpu (
         .clk(clk),
         .reset(reset),
@@ -65,7 +70,10 @@ module cached_core #(
         .kernel_mispredict_count_o(kernel_mispredict_count_o)
     );
 
-    l1_cache #(.READ_ONLY(1'b1)) instruction_cache (
+    l1_cache #(
+        .READ_ONLY(1'b1),
+        .META_DEPTH(CACHE_META_DEPTH)
+    ) instruction_cache (
         .clk(clk),
         .reset(reset),
         .cpu_req_i(inst_mem_req),
@@ -77,7 +85,10 @@ module cached_core #(
         .writeback_count_o(unused_icache_writebacks)
     );
 
-    l1_cache #(.READ_ONLY(1'b0)) data_cache (
+    l1_cache #(
+        .READ_ONLY(1'b0),
+        .META_DEPTH(CACHE_META_DEPTH)
+    ) data_cache (
         .clk(clk),
         .reset(reset),
         .cpu_req_i(data_mem_req),

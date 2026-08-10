@@ -1,0 +1,9 @@
+config,workload,cycles,retired,branches,mispredicts,btb_hits,kernel_cycles,kernel_retired,kernel_branches,kernel_mispredicts,icache_hits,icache_misses,dcache_hits,dcache_misses,dcache_writebacks
+minimum,predictor,7097,1453,406,229,397,0,0,0,0,1670,13,412,2,0
+minimum,cache,383324,81948,12291,8194,12285,0,0,0,0,90134,9,7168,1024,512
+minimum,attention,1004601,213633,38998,32810,57106,812098,173349,30065,25154,246323,121,50562,110,0
+minimum,smoke,104030,20900,6825,5007,4939,0,0,0,0,25825,83,4045,30,0
+maximum,predictor,3345,1454,407,36,401,0,0,0,0,2086,14,412,2,0
+maximum,cache,134472,81949,12292,14,12285,0,0,0,0,94274,9,7168,1024,512
+maximum,attention,353995,213634,38998,5260,41382,290310,173349,30065,4156,242371,125,50562,110,0
+maximum,smoke,46851,20901,6825,2182,6302,0,0,0,0,33511,86,4045,30,0

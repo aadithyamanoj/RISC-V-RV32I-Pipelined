@@ -10,7 +10,9 @@
 `include "RTL/gshare_predictor.sv"
 
 module core #(
-    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1
+    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1,
+    parameter int unsigned FETCH_DEPTH = 4,
+    parameter int unsigned STORE_DEPTH = 4
 ) (
     input logic       clk
     ,input logic      reset
@@ -83,8 +85,8 @@ word predictor_update_pc;
 word predictor_update_target;
 logic [5:0] predictor_update_index;
 
-localparam int unsigned FETCH_DEPTH = 4;
-localparam int unsigned FETCH_PTR_WIDTH = $clog2(FETCH_DEPTH);
+localparam int unsigned FETCH_PTR_WIDTH = (FETCH_DEPTH > 1)
+    ? $clog2(FETCH_DEPTH) : 1;
 
 typedef struct packed {
     logic complete;
@@ -129,8 +131,8 @@ logic memory_pending_r;
 logic memory_wait;
 logic execute_enable;
 
-localparam int unsigned STORE_DEPTH = 4;
-localparam int unsigned STORE_PTR_WIDTH = $clog2(STORE_DEPTH);
+localparam int unsigned STORE_PTR_WIDTH = (STORE_DEPTH > 1)
+    ? $clog2(STORE_DEPTH) : 1;
 typedef struct packed {
     word addr;
     word data;
@@ -282,18 +284,21 @@ always_ff @(posedge clk) begin
             fetch_entries_r[fetch_tail_r].btb_hit <= btb_hit_fetch;
             fetch_entries_r[fetch_tail_r].predicted_target
                 <= btb_target_fetch;
-            fetch_tail_r <= fetch_tail_r + 1'b1;
+            fetch_tail_r <= (FETCH_DEPTH == 1)
+                ? '0 : fetch_tail_r + 1'b1;
         end
 
         if (instruction_response_current) begin
             fetch_entries_r[fetch_response_r].inst <= inst_mem_rsp.data;
             fetch_entries_r[fetch_response_r].complete <= 1'b1;
-            fetch_response_r <= fetch_response_r + 1'b1;
+            fetch_response_r <= (FETCH_DEPTH == 1)
+                ? '0 : fetch_response_r + 1'b1;
         end
 
         if (fetch_dequeue) begin
             fetch_entries_r[fetch_head_r].complete <= 1'b0;
-            fetch_head_r <= fetch_head_r + 1'b1;
+            fetch_head_r <= (FETCH_DEPTH == 1)
+                ? '0 : fetch_head_r + 1'b1;
         end
 
         case ({fetch_accept, fetch_dequeue})
@@ -657,14 +662,17 @@ always_ff @(posedge clk) begin
             store_entries_r[store_tail_r].addr <= EX_MEM_r.ALU_Result;
             store_entries_r[store_tail_r].data <= store_data;
             store_entries_r[store_tail_r].mask <= store_mask;
-            store_tail_r <= store_tail_r + 1'b1;
+            store_tail_r <= (STORE_DEPTH == 1)
+                ? '0 : store_tail_r + 1'b1;
         end
 
         if (store_request_accept)
-            store_issue_r <= store_issue_r + 1'b1;
+            store_issue_r <= (STORE_DEPTH == 1)
+                ? '0 : store_issue_r + 1'b1;
 
         if (store_response)
-            store_head_r <= store_head_r + 1'b1;
+            store_head_r <= (STORE_DEPTH == 1)
+                ? '0 : store_head_r + 1'b1;
 
         case ({store_enqueue, store_response})
             2'b10: store_count_r <= store_count_r + 1'b1;

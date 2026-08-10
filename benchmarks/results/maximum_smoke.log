@@ -1,0 +1,45 @@
+## work.bsg_mem_2r1w_sync: instantiating width_p=         32, els_p=         32, read_write_same_addr_p=          1, harden_p=          0 (TOP.top.the_core.cpu.reg_file.registers)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=        44, els_p=       128 (TOP.top.the_core.instruction_cache.cache.tag_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=        44, els_p=       128 (TOP.top.the_core.data_cache.cache.tag_mem)
+## work.bsg_mem_1rw_sync_mask_write_byte: instantiating data_width_p=        64, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem)
+## work.bsg_mem_1rw_sync_mask_write_byte: instantiating data_width_p=        64, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=         3, els_p=       128 (TOP.top.the_core.instruction_cache.cache.stat_mem)
+## work.bsg_mem_1rw_sync_mask_write_bit: instantiating width_p=         3, els_p=       128 (TOP.top.the_core.data_cache.cache.stat_mem)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[0].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[1].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[2].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[3].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[4].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[5].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[6].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.instruction_cache.cache.data_mem.synth.nz.bk[7].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[0].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[1].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[2].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[3].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[4].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[5].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[6].mem_1rw_sync)
+## work.bsg_mem_1rw_sync: instantiating width_p=          8, els_p=      1024 (TOP.top.the_core.data_cache.cache.data_mem.synth.nz.bk[7].mem_1rw_sync)
+Running libmc smoke tests
+PASS strlen empty = 0
+PASS strlen hello = 5
+PASS strcmp same = 0
+PASS strcmp lt = 1
+PASS strcmp gt = 1
+PASS memset prefix = "xxx"
+PASS strchr offset = 6
+PASS strtok tok0 = "a"
+PASS strtok tok1 = "b"
+PASS strtok tok2 = "c"
+PASS strtok end = 1
+PASS sprintf len = 9
+PASS sprintf text = "val=42 hex=2a"
+PASS mul signed = -83810205
+PASS mul unsigned low = -324508648
+PASS gshare loop = 15100
+All libmc smoke tests passed
+PROFILE cycles=46851 retired=20901 branches=6825 mispredicts=2182 btb_hits=6302
+HALT code=0xc0de pc=0x10044
+KERNEL_PROFILE cycles=0 retired=0 branches=0 mispredicts=0
+CACHE_PROFILE icache_hits=33511 icache_misses=86 dcache_hits=4045 dcache_misses=30 dcache_writebacks=0

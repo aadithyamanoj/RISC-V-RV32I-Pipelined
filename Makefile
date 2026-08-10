@@ -16,6 +16,9 @@ LIBS=libmc/libmc.a
 TEST_S=tests/start.s
 TEST_C=tests/test.c
 PREDICT?=1
+FETCH_DEPTH?=4
+STORE_DEPTH?=4
+CACHE_META_DEPTH?=4
 
 BASEJUMP_STL_DIR=third_party/basejump_stl
 BASEJUMP_CACHE_SRCS= \
@@ -79,7 +82,7 @@ test: $(TEST_S:.s=.o) $(TEST_C:.c=.o) $(LIBS) $(TOOLS)
 	$(LD) $(LDFLAGS) -o test $(TEST_S:.s=.o) $(TEST_C:.c=.o) $(LDPOSTFLAGS)
 	/bin/bash ./Sim/elftohex.sh test .
 
-.PHONY: attention cache-test predictor-test ppa ppa-synth ppa-sta
+.PHONY: attention cache-test feature-bench predictor-test ppa ppa-synth ppa-sta test
 
 attention:
 	@$(MAKE) clean
@@ -92,6 +95,9 @@ predictor-test:
 cache-test:
 	@$(MAKE) clean
 	@$(MAKE) result-verilator TEST_C=tests/cache_stress.c
+
+feature-bench:
+	@./benchmarks/run_feature_sweep.sh
 
 ppa:
 	@$(MAKE) -C asic ppa
@@ -106,7 +112,9 @@ result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv $(BASEJUMP_CACHE_
 	 @unset LDFLAGS; \
 	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND \
 	 -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache \
-	 -GENABLE_BRANCH_PREDICTION=$(PREDICT) --top-module top \
+	 -GENABLE_BRANCH_PREDICTION=$(PREDICT) \
+	 -GFETCH_DEPTH=$(FETCH_DEPTH) -GSTORE_DEPTH=$(STORE_DEPTH) \
+	 -GCACHE_META_DEPTH=$(CACHE_META_DEPTH) --top-module top \
 	 $(BASEJUMP_CACHE_SRCS) RTL/top.sv Sim/verilator_top.cpp --exe \
 	 -CFLAGS "-std=c++17" \
    -LDFLAGS "-std=c++17"

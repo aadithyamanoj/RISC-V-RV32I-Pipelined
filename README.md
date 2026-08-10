@@ -56,6 +56,45 @@ projection, Q/K/V, score, probability, and output tensor hashes against the
 accelerator reference. MMIO markers delimit kernel-only cycle, retired
 instruction, branch, and misprediction counters.
 
+## Feature-sweep results
+
+The reproducible feature sweep compares two configurations while holding the
+RV32I/Zmmul datapath and 8 KiB two-way BSG caches constant:
+
+- **Minimum:** branch prediction disabled; one-entry fetch window, store queue,
+  and cache metadata queue.
+- **Maximum:** BTB/gshare prediction enabled; four-entry fetch window, store
+  queue, and cache metadata queue.
+
+Results below were collected with Verilator on 2026-08-10. Speedup is minimum
+cycles divided by maximum cycles, so values above 1 favor the maximum
+configuration.
+
+| Workload | Minimum cycles | Maximum cycles | Speedup | Minimum CPI | Maximum CPI |
+|---|---:|---:|---:|---:|---:|
+| Predictor/Zmmul | 7,097 | 3,345 | 2.12x | 4.88 | 2.30 |
+| Dirty-cache stress | 383,324 | 134,472 | 2.85x | 4.68 | 1.64 |
+| 16x16 attention | 1,004,601 | 353,995 | 2.84x | 4.70 | 1.66 |
+| libmc smoke | 104,030 | 46,851 | 2.22x | 4.98 | 2.24 |
+
+For the marked attention kernel alone, cycles fall from 812,098 to 290,310, a
+2.80x speedup. The attention outputs are bit-identical in both runs. The largest
+gains come from overlapping BSG hit latency and allowing store-heavy loops to
+continue until the ordered store queue fills. Prediction also reduces attention
+control recoveries from 25,154 to 4,156 inside the marked kernel.
+
+![Feature configuration cycles](benchmarks/results/feature_cycles.svg)
+
+![Maximum-feature speedup](benchmarks/results/feature_speedup.svg)
+
+Raw counters are saved in
+[`benchmarks/results/feature_sweep.csv`](benchmarks/results/feature_sweep.csv),
+with one log per run in the same directory. Regenerate the data and charts with:
+
+```sh
+make feature-bench
+```
+
 Both L1s are 8 KiB, two-way, write-back BaseJump STL `bsg_cache` instances with
 32-byte lines. A four-entry metadata adapter preserves ordered CPU responses,
 while a blocking line-DMA bridge converts refills and evictions to the

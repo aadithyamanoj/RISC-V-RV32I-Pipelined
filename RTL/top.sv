@@ -3,7 +3,10 @@
 `include "RTL/cached_core.sv"
 
 module top #(
-    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1
+    parameter bit ENABLE_BRANCH_PREDICTION = 1'b1,
+    parameter int unsigned FETCH_DEPTH = 4,
+    parameter int unsigned STORE_DEPTH = 4,
+    parameter int unsigned CACHE_META_DEPTH = 4
 ) (
     input clk,
     input reset,
@@ -42,7 +45,10 @@ assign profile_stop = data_backing_req.valid && data_backing_rsp.ready
     && (data_backing_req.addr == 32'h0002fff4);
 
 cached_core #(
-    .ENABLE_BRANCH_PREDICTION(ENABLE_BRANCH_PREDICTION)
+    .ENABLE_BRANCH_PREDICTION(ENABLE_BRANCH_PREDICTION),
+    .FETCH_DEPTH(FETCH_DEPTH),
+    .STORE_DEPTH(STORE_DEPTH),
+    .CACHE_META_DEPTH(CACHE_META_DEPTH)
 ) the_core (
 	.clk(clk)
 	,.reset(reset)

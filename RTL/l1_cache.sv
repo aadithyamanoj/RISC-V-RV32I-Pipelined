@@ -8,7 +8,8 @@
 // two-way, write-back bsg_cache. The cache moves 32-byte lines while the
 // simulation backing memory accepts one 32-bit word at a time.
 module l1_cache #(
-    parameter bit READ_ONLY = 1'b0
+    parameter bit READ_ONLY = 1'b0,
+    parameter int unsigned META_DEPTH = 4
 ) (
     input  logic         clk,
     input  logic         reset,
@@ -28,8 +29,8 @@ module l1_cache #(
     localparam int unsigned LINE_WORDS = 8;
     localparam int unsigned SETS = 128;
     localparam int unsigned WAYS = 2;
-    localparam int unsigned META_DEPTH = 4;
-    localparam int unsigned META_PTR_WIDTH = $clog2(META_DEPTH);
+    localparam int unsigned META_PTR_WIDTH = (META_DEPTH > 1)
+        ? $clog2(META_DEPTH) : 1;
     localparam int unsigned CACHE_PKT_WIDTH =
         `bsg_cache_pkt_width(ADDR_WIDTH, DATA_WIDTH);
     localparam int unsigned DMA_PKT_WIDTH =
@@ -226,7 +227,8 @@ module l1_cache #(
                 metadata_addr_r[metadata_tail_r] <= cpu_req_i.addr;
                 metadata_user_tag_r[metadata_tail_r] <= cpu_req_i.user_tag;
                 metadata_missed_r[metadata_tail_r] <= 1'b0;
-                metadata_tail_r <= metadata_tail_r + 1'b1;
+                metadata_tail_r <= (META_DEPTH == 1)
+                    ? '0 : metadata_tail_r + 1'b1;
             end
 
             if (cpu_bypass_accept) begin
@@ -240,7 +242,8 @@ module l1_cache #(
             if (cache_rsp_v && cache_rsp_yumi) begin
                 if (!metadata_missed_r[metadata_head_r])
                     hit_count_o <= hit_count_o + 1'b1;
-                metadata_head_r <= metadata_head_r + 1'b1;
+                metadata_head_r <= (META_DEPTH == 1)
+                    ? '0 : metadata_head_r + 1'b1;
             end
 
             case ({cpu_cached_accept, cache_rsp_v && cache_rsp_yumi})
