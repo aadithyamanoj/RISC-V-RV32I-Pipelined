@@ -18,6 +18,9 @@ SRAM_LIB := $(SRAM_DIR)/$(SRAM_NAME)_TT_1p8V_25C.lib
 SRAM_LEF := $(SRAM_DIR)/$(SRAM_NAME).lef
 
 BASEJUMP_STL_DIR := ../third_party/basejump_stl
+BASEJUMP_MUL_SRCS := \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_transpose.sv \
+	../RTL/basejump_multiplier_sources.sv
 BASEJUMP_CACHE_SRCS := \
 	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux.sv \
 	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux_segmented.sv \
@@ -66,7 +69,7 @@ synth-check:
 	@mkdir -p runs
 	@source "$(OSS_CAD_ROOT)/environment" && \
 	  yosys -Q -q -m slang -l runs/synth-check.log -p \
-	  'read_slang --top cached_core --compat vcs --allow-use-before-declare -DSYNTHESIS -DYOSYS -I.. -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache $(BASEJUMP_CACHE_SRCS) openram_blackboxes.sv ../RTL/cached_core.sv; hierarchy -check -top cached_core; proc; opt; check; memory -nomap; opt; check; stat'
+	  'read_slang --top cached_core --compat vcs --allow-use-before-declare -DSYNTHESIS -DYOSYS -I.. -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache $(BASEJUMP_CACHE_SRCS) $(BASEJUMP_MUL_SRCS) openram_blackboxes.sv ../RTL/cached_core.sv; hierarchy -check -top cached_core; proc; opt; check; memory -nomap; opt; check; stat'
 
 openram-macros:
 	@./fetch-openram-macros.sh
@@ -77,7 +80,7 @@ ppa-synth: openram-macros
 	@mkdir -p runs/ppa
 	@source "$(OSS_CAD_ROOT)/environment" && \
 	  yosys -Q -q -m slang -l runs/ppa/yosys.log -p \
-	  'read_liberty -lib $(STD_CELL_LIB_TT); read_liberty -lib $(SRAM_LIB); read_slang --top cached_core --compat vcs --allow-use-before-declare -DSYNTHESIS -DYOSYS -I.. -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache $(BASEJUMP_CACHE_SRCS) openram_blackboxes.sv ../RTL/cached_core.sv; hierarchy -check -top cached_core; proc; flatten; opt; memory_map; opt; techmap; opt; dfflibmap -liberty $(STD_CELL_LIB_TT); abc -liberty $(STD_CELL_LIB_TT) -D 50000; clean; check; stat -liberty $(STD_CELL_LIB_TT); write_verilog -noattr -noexpr runs/ppa/cached_core.nl.v; write_json runs/ppa/cached_core.json'
+	  'read_liberty -lib $(STD_CELL_LIB_TT); read_liberty -lib $(SRAM_LIB); read_slang --top cached_core --compat vcs --allow-use-before-declare -DSYNTHESIS -DYOSYS -I.. -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache $(BASEJUMP_CACHE_SRCS) $(BASEJUMP_MUL_SRCS) openram_blackboxes.sv ../RTL/cached_core.sv; hierarchy -check -top cached_core; proc; flatten; opt; memory_map; opt; techmap; opt; dfflibmap -liberty $(STD_CELL_LIB_TT); abc -liberty $(STD_CELL_LIB_TT) -dont_use sky130_fd_sc_hd__lpflow_* -D 50000; chformal -remove; clean; check; stat -liberty $(STD_CELL_LIB_TT); write_verilog -noattr -noexpr runs/ppa/cached_core.nl.v; write_json runs/ppa/cached_core.json'
 
 ppa-sta:
 	@test -f runs/ppa/cached_core.nl.v || \

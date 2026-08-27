@@ -33,10 +33,10 @@ store-to-load forwarding.
 
 ## Multiply
 
-`MUL`, `MULH`, `MULHSU`, and `MULHU` share one signedness-controlled 33x33
-combinational product datapath. The current pre-layout timing result identifies
-this as the next microarchitectural target: it should become multi-cycle or
-pipelined before attempting a timing-clean physical design.
+`MUL`, `MULH`, `MULHSU`, and `MULHU` share a one-cycle registered BaseJump STL
+radix-4 Booth multiplier. Execute holds the multiply instruction for the
+registered cycle, then forwards its result normally. `MULHSU` uses an unsigned
+product with the standard signed-left-operand high-word correction.
 
 ## Simulation and benchmarks
 

@@ -21,6 +21,9 @@ STORE_DEPTH?=4
 CACHE_META_DEPTH?=4
 
 BASEJUMP_STL_DIR=third_party/basejump_stl
+BASEJUMP_MUL_SRCS= \
+	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_transpose.sv \
+	RTL/basejump_multiplier_sources.sv
 BASEJUMP_CACHE_SRCS= \
 	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_defines.sv \
 	$(BASEJUMP_STL_DIR)/bsg_misc/bsg_mux.sv \
@@ -108,14 +111,15 @@ ppa-synth:
 ppa-sta:
 	@$(MAKE) -C asic ppa-sta
 
-result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv $(BASEJUMP_CACHE_SRCS) test
+result-verilator: RTL/top.sv Sim/verilator_top.cpp RTL/core.sv $(BASEJUMP_CACHE_SRCS) $(BASEJUMP_MUL_SRCS) test
 	 @unset LDFLAGS; \
 	 $(VERILATOR) -O0 --cc --build --Wno-UNOPTFLAT --Wno-WIDTHEXPAND \
+	 --Wno-WIDTHTRUNC \
 	 -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_cache \
 	 -GENABLE_BRANCH_PREDICTION=$(PREDICT) \
 	 -GFETCH_DEPTH=$(FETCH_DEPTH) -GSTORE_DEPTH=$(STORE_DEPTH) \
 	 -GCACHE_META_DEPTH=$(CACHE_META_DEPTH) --top-module top \
-	 $(BASEJUMP_CACHE_SRCS) RTL/top.sv Sim/verilator_top.cpp --exe \
+	 $(BASEJUMP_CACHE_SRCS) $(BASEJUMP_MUL_SRCS) RTL/top.sv Sim/verilator_top.cpp --exe \
 	 -CFLAGS "-std=c++17" \
    -LDFLAGS "-std=c++17"
 	 cp obj_dir/Vtop ./result-verilator

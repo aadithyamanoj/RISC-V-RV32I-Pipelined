@@ -85,6 +85,15 @@ word predictor_update_pc;
 word predictor_update_target;
 logic [5:0] predictor_update_index;
 
+logic execute_multiply;
+logic multiply_request;
+logic multiply_pending_r;
+logic multiply_signed;
+logic [63:0] multiply_product;
+logic [31:0] multiply_result;
+logic multiply_lhs_negative_r;
+logic [31:0] multiply_rhs_r;
+
 localparam int unsigned FETCH_PTR_WIDTH = (FETCH_DEPTH > 1)
     ? $clog2(FETCH_DEPTH) : 1;
 
@@ -387,6 +396,15 @@ always_comb begin
         FLUSH_ID_EX = false;
         FLUSH_IF_ID = false;
     end
+
+    // Hold the younger stages for the single registered multiplier cycle.
+    // EX/MEM remains free so the preceding instruction can continue.
+    if (execute_multiply && !multiply_pending_r) begin
+        STALL_PC = true;
+        STALL_IF_ID = true;
+        STALL_ID_EX = true;
+        FLUSH_ID_EX = false;
+    end
 end
 
 
@@ -490,6 +508,55 @@ logic [31:0] forwarded_read_data1;
 logic [31:0] forwarded_read_data2;
 logic [31:0] ex_mem_forward_data;
 
+assign execute_multiply = ID_EX_r.valid
+    && (ID_EX_r.decoded.opcode == OPCODE_R)
+    && ((ID_EX_r.decoded.alu_op == ALU_MUL)
+        || (ID_EX_r.decoded.alu_op == ALU_MULH)
+        || (ID_EX_r.decoded.alu_op == ALU_MULHSU)
+        || (ID_EX_r.decoded.alu_op == ALU_MULHU));
+assign multiply_request = execute_multiply && !multiply_pending_r
+    && !memory_wait;
+assign multiply_signed = ID_EX_r.decoded.alu_op == ALU_MULH;
+
+bsg_mul_pipelined #(
+    .width_p(32),
+    .pipeline_p(1),
+    .harden_p(0)
+) execute_multiplier (
+    .clk_i(clk),
+    .en_i(multiply_request),
+    .x_i(forwarded_read_data1),
+    .y_i(forwarded_read_data2),
+    .signed_i(multiply_signed),
+    .z_o(multiply_product)
+);
+
+always_comb begin
+    case (ID_EX_r.decoded.alu_op)
+        ALU_MUL: multiply_result = multiply_product[31:0];
+        ALU_MULH, ALU_MULHU: multiply_result = multiply_product[63:32];
+        ALU_MULHSU: multiply_result = multiply_product[63:32]
+            - (multiply_lhs_negative_r ? multiply_rhs_r : 32'd0);
+        default: multiply_result = 32'd0;
+    endcase
+end
+
+always_ff @(posedge clk) begin
+    if (reset) begin
+        multiply_pending_r <= 1'b0;
+        multiply_lhs_negative_r <= 1'b0;
+        multiply_rhs_r <= '0;
+    end else begin
+        if (multiply_request) begin
+            multiply_pending_r <= 1'b1;
+            multiply_lhs_negative_r <= forwarded_read_data1[31];
+            multiply_rhs_r <= forwarded_read_data2;
+        end else if (multiply_pending_r && !memory_wait) begin
+            multiply_pending_r <= 1'b0;
+        end
+    end
+end
+
 always_comb begin
     if ((EX_MEM_r.decoded.opcode == OPCODE_UJ_JAL)
         || (EX_MEM_r.decoded.opcode == OPCODE_I_JALR))
@@ -575,7 +642,8 @@ always_comb begin
         EX_MEM_n.next_pc = 0;
     end
     else begin
-        EX_MEM_n.valid = ID_EX_r.valid;
+        EX_MEM_n.valid = ID_EX_r.valid
+            && (!execute_multiply || multiply_pending_r);
         EX_MEM_n.pc = ID_EX_r.pc;
         EX_MEM_n.decoded = ID_EX_r.decoded;
         EX_MEM_n.inst = ID_EX_r.inst;
@@ -588,7 +656,10 @@ always_comb begin
 
         EX_MEM_n.jump = actual_taken_ex;
         EX_MEM_n.mispredict = redirect_ex;
-        EX_MEM_n.ALU_Result = ALU_EXEC(EX_MEM_n.decoded, EX_MEM_n.Read_Data1, EX_MEM_n.Read_Data2, EX_MEM_n.pc);    
+        EX_MEM_n.ALU_Result = execute_multiply
+            ? multiply_result
+            : ALU_EXEC(EX_MEM_n.decoded, EX_MEM_n.Read_Data1,
+                EX_MEM_n.Read_Data2, EX_MEM_n.pc);
         EX_MEM_n.next_pc = actual_next_pc_ex;
     end
 end

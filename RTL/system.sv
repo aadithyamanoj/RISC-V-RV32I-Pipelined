@@ -113,15 +113,6 @@ typedef struct packed {
 
 function automatic logic[31:0] ALU_EXEC(instruction_decode_t decoded_params, logic[31:0] Read_Data1, logic[31:0] Read_Data2, pc);
     logic [4:0] shamt;
-    logic signed [32:0] multiply_lhs;
-    logic signed [32:0] multiply_rhs;
-    logic signed [65:0] multiply_product;
-    multiply_lhs = $signed({((decoded_params.alu_op == ALU_MULH)
-        || (decoded_params.alu_op == ALU_MULHSU))
-        ? Read_Data1[31] : 1'b0, Read_Data1});
-    multiply_rhs = $signed({(decoded_params.alu_op == ALU_MULH)
-        ? Read_Data2[31] : 1'b0, Read_Data2});
-    multiply_product = multiply_lhs * multiply_rhs;
     if (decoded_params.opcode==OPCODE_U_LUI) begin
         return decoded_params.imm;
     end 
@@ -176,12 +167,9 @@ function automatic logic[31:0] ALU_EXEC(instruction_decode_t decoded_params, log
             // Bitwise AND
             return Read_Data1 & (decoded_params.opcode==OPCODE_R ? Read_Data2 : decoded_params.imm);
         end
-        ALU_MUL: begin
-            return multiply_product[31:0];
-        end
-        ALU_MULH, ALU_MULHSU, ALU_MULHU: begin
-            return multiply_product[63:32];
-        end
+        // Multiply operations are handled by the registered BaseJump
+        // multiplier in the execute stage.
+        ALU_MUL, ALU_MULH, ALU_MULHSU, ALU_MULHU: return 32'd0;
         ALU_NOP: begin
             // No Operation
             return 32'd0;
